@@ -58,8 +58,9 @@ export default function Hero() {
               <p className="mt-6 max-w-xl text-[16.5px] leading-relaxed text-ink-soft">
                 Namaste — I&apos;m <strong className="font-semibold text-ink">Mahesh Chavda</strong>, a full-time
                 taxi driver based in Ahmedabad. An early-morning airport drop, a day around the city, or a
-                900 km run to Delhi — book below, see the fare before you send it, and I&apos;ll call you
-                back to confirm. Or just call or WhatsApp me directly.
+                900 km run to Delhi — fill the form below and your details reach me on WhatsApp in one
+                message. I&apos;ll call you back to confirm the route and the fare. Or just call me
+                directly.
               </p>
             </Reveal>
 

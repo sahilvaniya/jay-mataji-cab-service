@@ -1,7 +1,7 @@
 "use client";
 
 import { usePrefersReducedMotion } from "./Reveal";
-import { quoteTrip, formatINR } from "@/lib/fare";
+import { CAR_CLASSES } from "@/lib/fare";
 
 /**
  * Stylised Ahmedabad street grid with an animated route from
@@ -9,7 +9,6 @@ import { quoteTrip, formatINR } from "@/lib/fare";
  */
 export default function MapView() {
   const reduced = usePrefersReducedMotion();
-  const airport = quoteTrip({ pickup: "Navrangpura", dropoff: "SVPI Airport", passengers: 1, carId: "sedan", tripType: "local" });
   const route = "M70 320 L70 250 L170 250 L170 172 L280 172 L280 104 L372 104 L372 58";
 
   return (
@@ -79,10 +78,10 @@ export default function MapView() {
         </svg>
 
         <div className="absolute right-3 top-3 rounded-lg border border-line bg-ink px-3 py-2 text-cream shadow-lg">
-          <p className="font-mono text-[9px] tracking-[0.2em] text-cream/60 uppercase">Airport drop</p>
+          <p className="font-mono text-[9px] tracking-[0.2em] text-cream/60 uppercase">Sedan rate</p>
           <p className="font-display text-lg font-extrabold text-sun">
-            {airport.ok ? formatINR(airport.total) : "—"}{" "}
-            <span className="text-[11px] font-bold text-cream/70">· ~{airport.ok ? airport.distanceKm : "–"} km</span>
+            ₹{CAR_CLASSES[0].perKm}
+            <span className="text-[11px] font-bold text-cream/70"> / km</span>
           </p>
         </div>
       </div>

@@ -1,22 +1,35 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
-  quoteTrip,
   carClassById,
-  formatINR,
-  formatHours,
   normalizeIndianMobile,
-  tripLabel,
   CAR_CLASSES,
   TRIP_TYPES,
   PLACE_SUGGESTIONS,
   type CarClassId,
   type TripType,
 } from "@/lib/fare";
+import {
+  buildWhatsAppMessage,
+  formatPhone,
+  formatWhen,
+  newCode,
+  saveBooking,
+  TRIP_TYPE_LABEL,
+  type StoredBooking,
+} from "@/lib/bookings";
 import { CONTACT, whatsappLink } from "@/lib/data";
-import { PinIcon, FlagIcon, ClockIcon, UsersIcon, ArrowIcon, CheckIcon, PhoneIcon, WhatsAppIcon } from "./Icons";
+import {
+  PinIcon,
+  FlagIcon,
+  ClockIcon,
+  UsersIcon,
+  CheckIcon,
+  PhoneIcon,
+  WhatsAppIcon,
+} from "./Icons";
 import { usePrefersReducedMotion } from "./Reveal";
 
 export interface PrefillDetail {
@@ -25,19 +38,23 @@ export interface PrefillDetail {
   tripType?: TripType;
 }
 
-interface Confirmed {
-  code: string;
-  name: string;
-  phone: string;
-  tripType: TripType;
-  pickup: string;
-  dropoff: string;
-  car: string;
-  passengers: number;
-  fare: number | null;
-  distanceKm: number | null;
-  pickupAt: string | null;
-}
+const TRIP_COPY: Record<TripType, { pickup: string; drop: string; badge: string }> = {
+  local: {
+    pickup: "Pickup in Ahmedabad — e.g. Navrangpura",
+    drop: "Drop in Ahmedabad — e.g. SVPI Airport",
+    badge: "Inside Ahmedabad · airport · station",
+  },
+  oneway: {
+    pickup: "Pickup city — e.g. Ahmedabad",
+    drop: "Destination city — e.g. Udaipur",
+    badge: "Only the drop — no return journey",
+  },
+  round: {
+    pickup: "Pickup city — e.g. Ahmedabad",
+    drop: "Destination city — e.g. Udaipur",
+    badge: "Go, stay, come back — billed both ways",
+  },
+};
 
 const SCRAMBLE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -58,7 +75,9 @@ function useScramble(text: string, active: boolean) {
       setOut(
         text
           .split("")
-          .map((ch, i) => (i < solved || ch === "-" ? ch : SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)]))
+          .map((ch, i) =>
+            i < solved || ch === "-" ? ch : SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)]
+          )
           .join("")
       );
       if (frame >= total) {
@@ -69,17 +88,6 @@ function useScramble(text: string, active: boolean) {
     return () => clearInterval(id);
   }, [text, active, reduced]);
   return out;
-}
-
-function formatWhen(iso: string | null): string {
-  if (!iso) return "As soon as possible";
-  return new Date(iso).toLocaleString("en-IN", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 function localMinDateTime(): string {
@@ -93,21 +101,22 @@ export default function BookingForm() {
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
   const [when, setWhen] = useState("");
+  const [returnWhen, setReturnWhen] = useState("");
   const [passengers, setPassengers] = useState(1);
   const [carId, setCarId] = useState<CarClassId>("sedan");
   const [carTouched, setCarTouched] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [showBreakdown, setShowBreakdown] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState<Confirmed | null>(null);
+  const [done, setDone] = useState<StoredBooking | null>(null);
   const [minDT, setMinDT] = useState("");
 
   useEffect(() => {
     setMinDT(localMinDateTime());
     try {
-      const saved = JSON.parse(localStorage.getItem("mc-customer") ?? "null") as { name?: string; phone?: string } | null;
+      const saved = JSON.parse(localStorage.getItem("mc-customer") ?? "null") as
+        | { name?: string; phone?: string }
+        | null;
       if (saved?.name) setName(saved.name);
       if (saved?.phone) setPhone(saved.phone);
     } catch {
@@ -136,23 +145,23 @@ export default function BookingForm() {
     setCarId(fit.id);
   }, [passengers, carTouched]);
 
-  const quote = useMemo(
-    () => quoteTrip({ pickup, dropoff, passengers, carId, tripType }),
-    [pickup, dropoff, passengers, carId, tripType]
-  );
   const car = carClassById(carId);
   const scrambled = useScramble(done?.code ?? "", !!done);
+  const copy = TRIP_COPY[tripType];
 
   const submit = useCallback(
-    async (e: React.FormEvent) => {
+    (e: React.FormEvent) => {
       e.preventDefault();
       setError(null);
-      if (pickup.trim().length < 3 || dropoff.trim().length < 3) {
+
+      const from = pickup.trim();
+      const to = dropoff.trim();
+      if (from.length < 3 || to.length < 3) {
         setError("Please enter both pickup and drop — an area or city name is enough.");
         return;
       }
-      if (!quote.ok && (quote.reason === "same" || quote.reason === "seats")) {
-        setError(quote.message);
+      if (from.toLowerCase() === to.toLowerCase()) {
+        setError("Pickup and drop are the same place.");
         return;
       }
       if (name.trim().length < 2) {
@@ -164,63 +173,41 @@ export default function BookingForm() {
         setError("Please enter a valid 10-digit Indian mobile number.");
         return;
       }
-      setBusy(true);
+
+      const booking: StoredBooking = {
+        id: `${Date.now()}`,
+        code: newCode(),
+        name: name.trim(),
+        phone: mobile,
+        tripType,
+        pickup: from,
+        dropoff: to,
+        carType: carId,
+        passengers,
+        pickupAt: when ? new Date(when).toISOString() : null,
+        returnAt: tripType === "round" && returnWhen ? new Date(returnWhen).toISOString() : null,
+        createdAt: new Date().toISOString(),
+      };
+
+      saveBooking(booking);
       try {
-        const res = await fetch("/api/bookings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            customerName: name.trim(),
-            customerPhone: mobile,
-            tripType,
-            pickup: pickup.trim(),
-            dropoff: dropoff.trim(),
-            carType: carId,
-            passengers,
-            pickupAt: when ? new Date(when).toISOString() : null,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error ?? "failed");
-        localStorage.setItem("mc-customer", JSON.stringify({ name: name.trim(), phone: mobile }));
-        setDone({
-          code: data.code,
-          name: name.trim(),
-          phone: mobile,
-          tripType,
-          pickup: pickup.trim(),
-          dropoff: dropoff.trim(),
-          car: car.name,
-          passengers,
-          fare: data.fareRupees,
-          distanceKm: data.distanceKm,
-          pickupAt: data.pickupAt,
-        });
-      } catch (err) {
-        const msg = err instanceof Error && err.message !== "failed" ? err.message : null;
-        setError(msg ?? `Couldn't send the booking. Please call ${CONTACT.phoneDisplay} directly.`);
-      } finally {
-        setBusy(false);
+        localStorage.setItem("mc-customer", JSON.stringify({ name: booking.name, phone: mobile }));
+      } catch {
+        /* ignore */
       }
+
+      const url = whatsappLink(buildWhatsAppMessage(booking));
+      setDone(booking);
+      window.open(url, "_blank", "noopener,noreferrer");
     },
-    [pickup, dropoff, quote, name, phone, tripType, carId, passengers, when, car.name]
+    [pickup, dropoff, name, phone, tripType, carId, passengers, when, returnWhen]
   );
 
   /* ---------------- confirmation ---------------- */
   if (done) {
-    const waText = [
-      `Namaste Maheshbhai, I just booked on your website.`,
-      `Booking: ${done.code}`,
-      `Name: ${done.name} (${done.phone})`,
-      `Trip: ${tripLabel(done.tripType)} · ${done.car} · ${done.passengers} pax`,
-      `From: ${done.pickup}`,
-      `To: ${done.dropoff}`,
-      `When: ${formatWhen(done.pickupAt)}`,
-      done.fare ? `Estimate: ${formatINR(done.fare)} + tolls/parking` : `Fare: please quote`,
-    ].join("\n");
-
+    const message = buildWhatsAppMessage(done);
     return (
-        <div className="overflow-hidden rounded-2xl border border-line bg-cream shadow-[0_30px_60px_-30px_rgba(23,21,15,0.3)]">
+      <div className="overflow-hidden rounded-2xl border border-line bg-cream shadow-[0_30px_60px_-30px_rgba(23,21,15,0.3)]">
         <div className="h-1.5 bg-sun" aria-hidden="true" />
         <div className="p-6 sm:p-8">
           <div className="flex items-center gap-3">
@@ -228,8 +215,12 @@ export default function BookingForm() {
               <CheckIcon className="h-5 w-5" strokeWidth={2.4} />
             </span>
             <div>
-              <p className="font-mono text-[10.5px] tracking-[0.22em] text-sun-deep uppercase">Booking received</p>
-              <h3 className="font-display text-2xl font-extrabold tracking-tight">Thank you, {done.name.split(" ")[0]}.</h3>
+              <p className="font-mono text-[10.5px] tracking-[0.22em] text-sun-deep uppercase">
+                {TRIP_TYPE_LABEL[done.tripType]}
+              </p>
+              <h3 className="font-display text-2xl font-extrabold tracking-tight">
+                Ready to send, {done.name.split(" ")[0]}.
+              </h3>
             </div>
           </div>
 
@@ -241,28 +232,30 @@ export default function BookingForm() {
           </div>
 
           <p className="mt-5 text-[14.5px] leading-relaxed text-ink-soft">
-            Mahesh will call you on <strong className="font-semibold text-ink">+91 {done.phone.replace(/(\d{5})(\d{5})/, "$1 $2")}</strong> within
-            about 15 minutes to confirm. Want it faster? Send the details on WhatsApp.
+            Your details are typed into a WhatsApp message to{" "}
+            <strong className="font-semibold text-ink">{CONTACT.name}</strong>. Just press{" "}
+            <strong className="font-semibold text-ink">Send</strong> — he&apos;ll call you on{" "}
+            <strong className="font-semibold text-ink">{formatPhone(done.phone)}</strong> to confirm the
+            route and the fare.
           </p>
 
           <dl className="mt-5 grid gap-3 rounded-xl border border-line bg-paper p-4 text-[13.5px]">
+            <Row k="Type" v={TRIP_TYPE_LABEL[done.tripType]} />
             <Row k="Route" v={`${done.pickup} → ${done.dropoff}`} />
-            <Row k="Trip" v={`${tripLabel(done.tripType)} · ${done.car} · ${done.passengers} pax`} />
             <Row k="Pickup" v={formatWhen(done.pickupAt)} />
-            <Row
-              k="Estimate"
-              v={done.fare ? `${formatINR(done.fare)}${done.distanceKm ? ` · ~${done.distanceKm} km` : ""} + tolls/parking` : "Mahesh will quote on the call"}
-            />
+            {done.tripType === "round" ? <Row k="Return" v={formatWhen(done.returnAt)} /> : null}
+            <Row k="Car" v={`${carClassById(done.carType).name} · ${done.passengers} pax`} />
+            <Row k="Rate" v={`₹${carClassById(done.carType).perKm} per km · fare quoted on the call`} />
           </dl>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <a
-              href={whatsappLink(waText)}
+              href={whatsappLink(message)}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 rounded-full bg-[#25D366] py-3.5 font-display text-[14px] font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:brightness-95"
             >
-              <WhatsAppIcon className="h-5 w-5" /> Send on WhatsApp
+              <WhatsAppIcon className="h-5 w-5" /> Open WhatsApp again
             </a>
             <a
               href={`tel:${CONTACT.phoneTel}`}
@@ -272,7 +265,7 @@ export default function BookingForm() {
             </a>
           </div>
           <div className="mt-4 flex items-center justify-between text-[13px]">
-            <Link href={`/bookings?phone=${done.phone}`} className="link-under font-semibold text-ink">
+            <Link href="/bookings" className="link-under font-semibold text-ink">
               View my bookings →
             </Link>
             <button
@@ -281,6 +274,7 @@ export default function BookingForm() {
                 setPickup("");
                 setDropoff("");
                 setWhen("");
+                setReturnWhen("");
               }}
               className="link-under font-semibold text-ink-soft hover:text-ink"
             >
@@ -302,7 +296,7 @@ export default function BookingForm() {
       <div className="h-1.5 bg-sun" aria-hidden="true" />
       <div className="p-5 sm:p-6">
         {/* trip type */}
-        <div className="grid grid-cols-3 gap-1 rounded-xl border border-line bg-paper p-1" role="tablist" aria-label="Trip type">
+        <div className="grid grid-cols-3 gap-1 rounded-xl border border-line bg-paper p-1" role="tablist" aria-label="Booking type">
           {TRIP_TYPES.map((t) => (
             <button
               key={t.id}
@@ -315,15 +309,20 @@ export default function BookingForm() {
               }`}
             >
               <span className="block font-display text-[13px] font-bold">{t.label}</span>
-              <span className={`hidden font-mono text-[9px] tracking-wide sm:block ${tripType === t.id ? "text-sun" : "text-ink-soft/70"}`}>
+              <span
+                className={`hidden font-mono text-[9px] leading-tight tracking-wide sm:block ${
+                  tripType === t.id ? "text-sun" : "text-ink-soft/70"
+                }`}
+              >
                 {t.hint}
               </span>
             </button>
           ))}
         </div>
+        <p className="mt-2 pl-1 font-mono text-[10px] tracking-wide text-ink-soft">{copy.badge}</p>
 
         {/* route */}
-        <div className="mt-4 grid grid-cols-[22px_1fr] gap-x-3 gap-y-3">
+        <div className="mt-3 grid grid-cols-[22px_1fr] gap-x-3 gap-y-3">
           <div className="flex flex-col items-center pt-3.5" aria-hidden="true">
             <span className="h-4 w-4 rounded-full border-2 border-ink bg-sun" />
             <span className="w-px flex-1 border-l-2 border-dotted border-ink/30" />
@@ -333,7 +332,7 @@ export default function BookingForm() {
               value={pickup}
               onChange={(e) => setPickup(e.target.value)}
               list="mc-places"
-              placeholder="Pickup — e.g. Navrangpura, Ahmedabad"
+              placeholder={copy.pickup}
               aria-label="Pickup location"
               className={inputCls}
             />
@@ -346,7 +345,7 @@ export default function BookingForm() {
               value={dropoff}
               onChange={(e) => setDropoff(e.target.value)}
               list="mc-places"
-              placeholder={tripType === "local" ? "Drop — e.g. SVPI Airport" : "Destination city — e.g. Udaipur"}
+              placeholder={copy.drop}
               aria-label="Drop location"
               className={inputCls}
             />
@@ -393,9 +392,28 @@ export default function BookingForm() {
             </button>
           </div>
         </div>
-        <p className="mt-1.5 pl-1 font-mono text-[10px] tracking-wide text-ink-soft">
-          Leave date empty for “as soon as possible”
-        </p>
+
+        {tripType === "round" ? (
+          <div className="mt-3">
+            <Field icon={<ClockIcon className="h-4.5 w-4.5" />}>
+              <input
+                type="datetime-local"
+                value={returnWhen}
+                min={minDT || undefined}
+                onChange={(e) => setReturnWhen(e.target.value)}
+                aria-label="Return date and time (optional)"
+                className={`${inputCls} ${returnWhen ? "" : "text-ink-soft/70"}`}
+              />
+            </Field>
+            <p className="mt-1.5 pl-1 font-mono text-[10px] tracking-wide text-ink-soft">
+              Return date — leave empty if you&apos;ll decide it with Mahesh
+            </p>
+          </div>
+        ) : (
+          <p className="mt-1.5 pl-1 font-mono text-[10px] tracking-wide text-ink-soft">
+            Leave date empty for “as soon as possible”
+          </p>
+        )}
 
         {/* car */}
         <div className="mt-4 grid grid-cols-3 gap-1 rounded-xl border border-line bg-paper p-1.5 sm:grid-cols-5">
@@ -416,7 +434,9 @@ export default function BookingForm() {
                 } ${carId === c.id ? "bg-ink text-sun" : "text-ink-soft hover:bg-sun-soft hover:text-ink"}`}
               >
                 <span className="block truncate font-display text-[12px] font-bold">{c.short}</span>
-                <span className="block truncate font-mono text-[9px] opacity-70">{c.seatsLabel ?? `${c.seats} seats`}</span>
+                <span className="block truncate font-mono text-[9px] opacity-70">
+                  {c.seatsLabel ?? `${c.seats} seats`}
+                </span>
               </button>
             );
           })}
@@ -433,7 +453,9 @@ export default function BookingForm() {
             className={`${inputCls} pl-4`}
           />
           <div className="relative">
-            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-mono text-[13.5px] font-bold text-ink-soft">+91</span>
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-mono text-[13.5px] font-bold text-ink-soft">
+              +91
+            </span>
             <input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -446,83 +468,43 @@ export default function BookingForm() {
           </div>
         </div>
 
-        {/* meter */}
-        <div className="mt-5 rounded-xl bg-ink px-5 py-4">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] text-cream/50 uppercase">
-                <span className="meter-blink inline-block h-1.5 w-1.5 rounded-full bg-sun" />
-                {quote.ok && quote.approx ? "Approx. fare" : "Estimated fare"}
-              </p>
-              <p className="mt-1 font-mono text-[32px] leading-none font-bold tracking-tight text-sun tabular-nums">
-                {quote.ok ? formatINR(quote.total) : "₹ – – –"}
-              </p>
-            </div>
-            <div className="text-right font-mono text-[10.5px] leading-relaxed text-cream/60">
-              {quote.ok ? (
-                <>
-                  <p className="text-cream/90">
-                    ~{quote.distanceKm} km · {formatHours(quote.hours)}
-                  </p>
-                  <p>{quote.rateLabel}</p>
-                </>
-              ) : (
-                <p className="max-w-[190px]">{quote.message}</p>
-              )}
-            </div>
+        {/* rate — published price, not a calculated fare */}
+        <div className="mt-5 flex items-center justify-between gap-4 rounded-xl bg-ink px-5 py-4">
+          <div>
+            <p className="font-mono text-[10px] tracking-[0.22em] text-cream/50 uppercase">{car.name} rate</p>
+            <p className="mt-1 font-mono text-[30px] leading-none font-bold tracking-tight text-sun tabular-nums">
+              ₹{car.perKm}
+              <span className="text-[13px] font-normal text-cream/60"> / km</span>
+            </p>
           </div>
-          {quote.ok && (
-            <>
-              <button
-                type="button"
-                onClick={() => setShowBreakdown((v) => !v)}
-                className="mt-3 font-mono text-[10px] tracking-[0.16em] text-cream/50 uppercase hover:text-sun"
-                aria-expanded={showBreakdown}
-              >
-                {showBreakdown ? "− Hide" : "+ Show"} breakdown
-              </button>
-              {showBreakdown && (
-                <div className="mt-2 space-y-1.5 border-t border-dashed border-cream/20 pt-2.5 font-mono text-[11.5px]">
-                  {quote.lines.map((l) => (
-                    <p key={l.label} className="flex items-baseline gap-2">
-                      <span className="text-cream/60">{l.label}</span>
-                      <span className="flex-1 border-b border-dotted border-cream/20" />
-                      <span className="text-cream">{formatINR(l.amount)}</span>
-                    </p>
-                  ))}
-                  {tripType !== "local" && <p className="pt-1 text-cream/45">+ toll, parking & state tax at actuals</p>}
-                </div>
-              )}
-              {quote.note && <p className="mt-2.5 text-[12px] text-sun/90">{quote.note}</p>}
-            </>
-          )}
+          <div className="text-right font-mono text-[10.5px] leading-relaxed text-cream/60">
+            <p className="text-cream/90">{car.vehicles}</p>
+            <p>
+              {car.seatsLabel ?? `${car.seats} seats`} · {car.bags} bags
+            </p>
+          </div>
         </div>
 
         {error && (
-          <p role="alert" className="mt-3 rounded-lg border border-warn/30 bg-warn/10 px-3.5 py-2.5 text-[13px] font-medium text-warn">
+          <p
+            role="alert"
+            className="mt-3 rounded-lg border border-warn/30 bg-warn/10 px-3.5 py-2.5 text-[13px] font-medium text-warn"
+          >
             {error}
           </p>
         )}
 
         <button
           type="submit"
-          disabled={busy}
-          className="group mt-5 flex w-full items-center justify-center gap-2.5 rounded-full bg-sun py-4 font-display text-[15px] font-extrabold tracking-wide text-ink transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-12px_rgba(226,164,0,0.7)] disabled:translate-y-0 disabled:opacity-70"
+          className="group mt-5 flex w-full items-center justify-center gap-2.5 rounded-full bg-sun py-4 font-display text-[15px] font-extrabold tracking-wide text-ink transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-12px_rgba(226,164,0,0.7)]"
         >
-          {busy ? (
-            <>
-              <span className="spin inline-block h-4 w-4 rounded-full border-2 border-ink/30 border-t-ink" />
-              Sending to Mahesh…
-            </>
-          ) : (
-            <>
-              {quote.ok ? `Request booking — ${formatINR(quote.total)}` : "Request booking"}
-              <ArrowIcon className="h-4.5 w-4.5 transition-transform duration-300 group-hover:translate-x-1" />
-            </>
-          )}
+          Send booking on WhatsApp
+          <WhatsAppIcon className="h-5 w-5" />
         </button>
-        <p className="mt-3 text-center font-mono text-[10px] tracking-wide text-ink-soft">
-          No advance for local trips · Pay cash or UPI · Mahesh calls back to confirm
+        <p className="mt-3 text-center font-mono text-[10px] leading-relaxed tracking-wide text-ink-soft">
+          Opens WhatsApp with your details typed in — just press send.
+          <br />
+          Fare is confirmed on the call · Tolls &amp; parking at actuals · Cash or UPI
         </p>
       </div>
     </form>
@@ -543,9 +525,9 @@ function Field({ icon, children }: { icon: React.ReactNode; children: React.Reac
 
 function Row({ k, v }: { k: string; v: string }) {
   return (
-    <div className="grid grid-cols-[72px_1fr] gap-3">
-      <dt className="font-mono text-[10px] tracking-[0.16em] text-ink-soft uppercase pt-0.5">{k}</dt>
-      <dd className="font-medium text-ink">{v}</dd>
+    <div className="grid grid-cols-[64px_1fr] gap-3">
+      <dt className="pt-0.5 font-mono text-[10px] tracking-[0.16em] text-ink-soft uppercase">{k}</dt>
+      <dd className="min-w-0 font-medium break-words text-ink">{v}</dd>
     </div>
   );
 }

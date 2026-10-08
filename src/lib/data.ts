@@ -50,7 +50,7 @@ export const STEPS: Step[] = [
   {
     num: "01",
     title: "Tell me the trip",
-    body: "Fill in the form, call, or send a WhatsApp — whichever is easiest. Pickup, drop, date, and how many people. You see the estimated fare before you send anything.",
+    body: "Fill in the form, call, or send a WhatsApp — whichever is easiest. Pickup, drop, date, and how many people. Everything you type goes to me in one WhatsApp message, so nothing has to be repeated.",
     note: "Form · Call · WhatsApp",
   },
   {

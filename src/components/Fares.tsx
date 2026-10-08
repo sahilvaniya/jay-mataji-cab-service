@@ -1,4 +1,4 @@
-import { CAR_CLASSES, quoteTrip, formatINR } from "@/lib/fare";
+import { CAR_CLASSES } from "@/lib/fare";
 import { Reveal, SectionHead } from "./Reveal";
 import { CheckIcon } from "./Icons";
 
@@ -13,8 +13,6 @@ function Rate({ label, value, sub }: { label: string; value: string; sub?: strin
 }
 
 export default function Fares() {
-  const sample = quoteTrip({ pickup: "Ahmedabad", dropoff: "Udaipur", passengers: 2, carId: "sedan", tripType: "oneway" });
-
   return (
     <section id="fares" className="scroll-mt-24 bg-paper py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
@@ -27,7 +25,7 @@ export default function Fares() {
               <span className="text-sun-deep"> The same on a Diwali night.</span>
             </>
           }
-          copy="No surge, no festival pricing, no 'night charge' surprise. The fare is simply the car's rate per kilometre × the distance. Toll, parking and state tax are paid at actuals — with the receipts handed to you."
+          copy="No surge, no festival pricing, no 'night charge' surprise. The fare is simply the car's rate per kilometre × the distance we drive. Toll, parking and state tax are paid at actuals — with the receipts handed to you."
         />
 
         <div className="mt-12 grid gap-8 lg:grid-cols-12">
@@ -68,9 +66,8 @@ export default function Fares() {
               ))}
             </div>
             <p className="mt-4 font-mono text-[10.5px] leading-relaxed tracking-wide text-ink-soft">
-              Same rate for local, one-way and round trips. A round trip is billed for the total
-              distance driven. Tolls, parking, state entry tax and the driver&apos;s daily allowance are
-              extra, at actuals.
+              Same rate for local, one-way and round trips. Tolls, parking, state entry tax and the
+              driver&apos;s daily allowance are extra, at actuals.
             </p>
           </Reveal>
 
@@ -97,36 +94,36 @@ export default function Fares() {
               </div>
             </Reveal>
 
-            {sample.ok && (
-              <Reveal delay={220}>
-                <div className="mt-5 rounded-2xl bg-ink p-6 text-cream">
-                  <p className="font-mono text-[10px] tracking-[0.24em] text-cream/50 uppercase">
-                    Sample · Sedan · Ahmedabad → Udaipur · One-way
-                  </p>
-                  <div className="mt-4 space-y-2 font-mono text-[12.5px]">
-                    {sample.lines.map((l) => (
-                      <p key={l.label} className="flex items-baseline justify-between gap-3">
-                        <span className="text-cream/60">{l.label}</span>
-                        <span className="flex-1 border-b border-dotted border-cream/25" />
-                        <span>{formatINR(l.amount)}</span>
-                      </p>
-                    ))}
-                    <p className="flex items-baseline justify-between gap-3">
-                      <span className="text-cream/60">Tolls &amp; parking</span>
+            <Reveal delay={220}>
+              <div className="mt-5 rounded-2xl bg-ink p-6 text-cream">
+                <p className="font-mono text-[10px] tracking-[0.24em] text-cream/50 uppercase">
+                  How the fare is worked out · Sedan
+                </p>
+                <div className="mt-4 space-y-2 font-mono text-[12.5px]">
+                  {[
+                    ["250 km one-way", "250 × ₹11 = ₹2,750"],
+                    ["500 km round trip", "500 × ₹11 = ₹5,500"],
+                    ["Tolls & parking", "at actuals"],
+                  ].map(([k, v], i) => (
+                    <p key={k} className="flex items-baseline justify-between gap-3">
+                      <span className="text-cream/60">{k}</span>
                       <span className="flex-1 border-b border-dotted border-cream/25" />
-                      <span className="text-cream/60">at actuals</span>
+                      <span className={i === 2 ? "text-cream/60" : ""}>{v}</span>
                     </p>
-                  </div>
-                  <p className="mt-4 flex items-baseline justify-between border-t border-dashed border-cream/25 pt-3">
-                    <span className="font-mono text-[10px] tracking-[0.24em] text-cream/50 uppercase">Fare</span>
-                    <span className="font-mono text-2xl font-bold text-sun">{formatINR(sample.total)}</span>
-                  </p>
-                  <p className="mt-3 text-[12px] leading-relaxed text-cream/55">
-                    The number on the website is the number on the phone call is the number you pay.
-                  </p>
+                  ))}
                 </div>
-              </Reveal>
-            )}
+                <p className="mt-4 flex items-baseline justify-between border-t border-dashed border-cream/25 pt-3">
+                  <span className="font-mono text-[10px] tracking-[0.24em] text-cream/50 uppercase">You pay</span>
+                  <span className="font-mono text-2xl font-bold text-sun">
+                    rate <span className="text-cream/40">×</span> km
+                  </span>
+                </p>
+                <p className="mt-3 text-[12px] leading-relaxed text-cream/55">
+                  The exact distance is settled when we plan the route, and the fare is agreed on the
+                  call before we leave. Nothing else is added.
+                </p>
+              </div>
+            </Reveal>
           </div>
         </div>
       </div>
