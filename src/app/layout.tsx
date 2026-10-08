@@ -3,30 +3,30 @@ import localFont from "next/font/local";
 import "./globals.css";
 
 /* Self-hosted typefaces — no build-time or runtime network dependency. */
-const archivo = localFont({
-  src: "../fonts/archivo-latin.woff2",
-  weight: "500 900",
-  style: "normal",
-  variable: "--font-archivo",
-  display: "swap",
-});
+// const archivo = localFont({
+//   src: "../fonts/archivo-latin.woff2",
+//   weight: "500 900",
+//   style: "normal",
+//   variable: "--font-archivo",
+//   display: "swap",
+// });
 
-const instrument = localFont({
-  src: "../fonts/instrument-latin.woff2",
-  weight: "400 700",
-  style: "normal",
-  variable: "--font-instrument",
-  display: "swap",
-});
+// const instrument = localFont({
+//   src: "../fonts/instrument-latin.woff2",
+//   weight: "400 700",
+//   style: "normal",
+//   variable: "--font-instrument",
+//   display: "swap",
+// });
 
-const spacemono = localFont({
-  src: [
-    { path: "../fonts/spacemono-400.woff2", weight: "400", style: "normal" },
-    { path: "../fonts/spacemono-700.woff2", weight: "700", style: "normal" },
-  ],
-  variable: "--font-spacemono",
-  display: "swap",
-});
+// const spacemono = localFont({
+//   src: [
+//     { path: "../fonts/spacemono-400.woff2", weight: "400", style: "normal" },
+//     { path: "../fonts/spacemono-700.woff2", weight: "700", style: "normal" },
+//   ],
+//   variable: "--font-spacemono",
+//   display: "swap",
+// });
 
 export const metadata: Metadata = {
   title: "Mahesh Chavda Taxi Service — Ahmedabad to anywhere in India",
@@ -48,7 +48,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en-IN" className={`${archivo.variable} ${instrument.variable} ${spacemono.variable}`}>
+    // <html lang="en-IN" className={`${archivo.variable} ${instrument.variable} ${spacemono.variable}`}>
+    <html lang="en-IN" >
       <body className="min-h-screen">
         <div className="noise-layer" aria-hidden="true" />
         {children}
