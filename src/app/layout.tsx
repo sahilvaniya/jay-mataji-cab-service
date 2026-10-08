@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Archivo, Instrument_Serif, Space_Mono } from "next/font/google";
 import "./globals.css";
 
 /* Self-hosted typefaces — no build-time or runtime network dependency. */
