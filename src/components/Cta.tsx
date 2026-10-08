@@ -6,12 +6,12 @@ import { CONTACT, whatsappLink } from "@/lib/data";
 export default function Cta() {
   return (
     <section className="relative overflow-hidden bg-sun">
-      <div className="checker" aria-hidden="true" />
+      <div className="h-2 bg-ink" aria-hidden="true" />
       <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
         <p className="font-mono text-[11px] tracking-[0.24em] text-ink/60 uppercase">10 — Whenever you need it</p>
-        <h2 className="mt-5 font-display text-5xl font-extrabold tracking-tight text-ink sm:text-6xl lg:text-7xl">
+        <h2 className="mt-5 font-display text-[clamp(1.85rem,9vw,2.6rem)] font-extrabold tracking-tight text-ink sm:text-6xl lg:text-7xl">
           <MaskLines
-            lines={["Chalo, let's go.", <>Ready <span className="inline-block -skew-x-6 bg-ink px-4 text-sun sm:px-5">24 × 7.</span></>]}
+            lines={["Chalo, let's go.", <>Ready <span className="inline-block -skew-x-6 bg-ink px-3 text-sun sm:px-5">24 × 7.</span></>]}
           />
         </h2>
         <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">

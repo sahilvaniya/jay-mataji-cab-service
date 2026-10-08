@@ -28,7 +28,6 @@ export default function Header() {
 
   return (
     <header className="fixed inset-x-0 top-0 z-50">
-      <div className="checker" aria-hidden="true" />
       <div className="bg-ink text-cream/80">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-1.5 sm:px-6">
           <p className="font-mono text-[10.5px] tracking-[0.18em] uppercase">

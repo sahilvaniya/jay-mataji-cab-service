@@ -23,19 +23,19 @@ export default function Fares() {
           kicker="Rate card"
           title={
             <>
-              Per-km rates, printed here.
+              One rate per kilometre.
               <span className="text-sun-deep"> The same on a Diwali night.</span>
             </>
           }
-          copy="No surge, no festival pricing, no 'night charge' surprise. The quote is the car rate × kilometres, plus a driver allowance on outstation trips. Toll, parking and state tax are paid at actuals — with the receipts handed to you."
+          copy="No surge, no festival pricing, no 'night charge' surprise. The fare is simply the car's rate per kilometre × the distance. Toll, parking and state tax are paid at actuals — with the receipts handed to you."
         />
 
         <div className="mt-12 grid gap-8 lg:grid-cols-12">
           <Reveal className="min-w-0 lg:col-span-7">
             <div className="overflow-hidden rounded-2xl border border-line bg-cream">
               {/* column labels — desktop only */}
-              <div className="hidden bg-ink px-4 py-3.5 text-cream sm:grid sm:grid-cols-[1.5fr_1.15fr_1fr_1fr_0.9fr] sm:items-center sm:gap-3">
-                {["Car", "Local", "One-way", "Round trip", "Driver / day"].map((h, i) => (
+              <div className="hidden bg-ink px-4 py-3.5 text-cream sm:grid sm:grid-cols-[1.35fr_0.95fr_0.75fr_1.35fr] sm:items-center sm:gap-3">
+                {["Car", "Rate per km", "Seats", "Good for"].map((h, i) => (
                   <p
                     key={h}
                     className={`font-mono text-[10px] font-bold tracking-[0.18em] uppercase ${i > 0 ? "text-right" : ""}`}
@@ -48,26 +48,29 @@ export default function Fares() {
               {CAR_CLASSES.map((c) => (
                 <div
                   key={c.id}
-                  className="border-t border-line px-4 py-4 transition-colors hover:bg-sun-wash sm:grid sm:grid-cols-[1.5fr_1.15fr_1fr_1fr_0.9fr] sm:items-center sm:gap-3"
+                  className="border-t border-line px-4 py-4 transition-colors hover:bg-sun-wash sm:grid sm:grid-cols-[1.35fr_0.95fr_0.75fr_1.35fr] sm:items-center sm:gap-3"
                 >
                   <div className="min-w-0">
                     <p className="font-display text-[15px] font-extrabold tracking-tight text-ink">{c.name}</p>
-                    <p className="font-mono text-[10px] tracking-wide text-ink-soft uppercase">{c.seats} seats</p>
+                    <p className="font-mono text-[10px] tracking-wide text-ink-soft uppercase">{c.vehicles}</p>
                   </div>
-                  {/* on phones these sit in a labelled 2-up grid; on desktop they flatten
+                  {/* on phones these sit in a labelled grid; on desktop they flatten
                       into the row's columns via `sm:contents` */}
-                  <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:contents">
-                    <Rate label="Local" value={`₹${c.localPerKm}/km`} sub={`min ${formatINR(c.localMin)}`} />
-                    <Rate label="One-way" value={`₹${c.oneWayPerKm}/km`} />
-                    <Rate label="Round trip" value={`₹${c.roundPerKm}/km`} />
-                    <Rate label="Driver / day" value={formatINR(c.allowance)} />
+                  <div className="mt-3 grid grid-cols-3 gap-x-4 gap-y-3 sm:contents">
+                    <Rate label="Rate per km" value={`₹${c.perKm}`} />
+                    <Rate label="Seats" value={c.seatsLabel ?? `${c.seats}`} />
+                    <div className="min-w-0 sm:text-right">
+                      <p className="font-mono text-[9px] tracking-[0.18em] text-ink-soft uppercase sm:hidden">Good for</p>
+                      <p className="text-[12.5px] leading-snug text-ink-soft">{c.bestFor}</p>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
             <p className="mt-4 font-mono text-[10.5px] leading-relaxed tracking-wide text-ink-soft">
-              Local = base fare + per km, inside Ahmedabad &amp; Gandhinagar. One-way minimum 130 km.
-              Round trip minimum 250 km per day. Driver allowance applies to outstation trips of 200 km+.
+              Same rate for local, one-way and round trips. A round trip is billed for the total
+              distance driven. Tolls, parking, state entry tax and the driver&apos;s daily allowance are
+              extra, at actuals.
             </p>
           </Reveal>
 
@@ -109,7 +112,7 @@ export default function Fares() {
                       </p>
                     ))}
                     <p className="flex items-baseline justify-between gap-3">
-                      <span className="text-cream/60">Tolls</span>
+                      <span className="text-cream/60">Tolls &amp; parking</span>
                       <span className="flex-1 border-b border-dotted border-cream/25" />
                       <span className="text-cream/60">at actuals</span>
                     </p>

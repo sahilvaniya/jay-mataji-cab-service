@@ -37,7 +37,7 @@ export default function Hero() {
               </p>
             </Reveal>
 
-            <h1 className="mt-5 font-display text-[44px] leading-[0.98] font-extrabold tracking-[-0.02em] text-ink sm:text-6xl lg:text-[4.4rem]">
+            <h1 className="mt-5 font-display text-[clamp(2.05rem,10vw,2.75rem)] leading-[0.98] font-extrabold tracking-[-0.02em] text-ink sm:text-6xl lg:text-[4.4rem]">
               <MaskLines
                 lines={[
                   "From Ahmedabad",
@@ -95,7 +95,7 @@ export default function Hero() {
                 <span className="hidden h-9 w-px bg-line sm:block" />
                 <Stat value="24 × 7" label="Call or WhatsApp" />
                 <span className="hidden h-9 w-px bg-line sm:block" />
-                <Stat value="₹12/km" label="Sedan one-way, from" />
+                <Stat value="₹11/km" label="Sedan, per km" />
               </div>
             </Reveal>
           </div>

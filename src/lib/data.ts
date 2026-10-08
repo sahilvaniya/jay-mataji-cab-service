@@ -232,11 +232,11 @@ export const FAQS: Faq[] = [
   },
   {
     q: "What is included in the fare, and what is extra?",
-    a: "The fare covers the car, fuel, and driver. Toll tax, parking, and state entry/permit tax (when crossing into another state) are extra at actuals — you pay exactly what the receipt says. Outstation trips include a driver allowance per day, shown in the quote.",
+    a: "The fare covers the car, fuel, and driver. Toll tax, parking, and state entry/permit tax (when crossing into another state) are extra at actuals — you pay exactly what the receipt says. On outstation trips the driver's daily allowance (bata) is also extra at actuals, and I confirm that amount with you before we leave.",
   },
   {
     q: "How is a one-way trip charged differently from a round trip?",
-    a: "One-way is charged per km for the distance to your drop, with a minimum of 130 km. Round trips are charged for the total km driven, with a minimum of 250 km per day, at a slightly lower per-km rate.",
+    a: "Both are charged at the same rate per kilometre for the car you choose — ₹11/km Sedan, ₹13/km Ertiga, ₹18/km Innova Crysta, ₹30/km Tempo Traveller or Harbaniya. A one-way trip is billed for the distance to your drop; a round trip is billed for the total distance driven, from Ahmedabad and back. The final figure is confirmed on the call before we leave.",
   },
   {
     q: "Do I need to pay an advance?",

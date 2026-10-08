@@ -1,24 +1,29 @@
 import type { Metadata } from "next";
-import { Archivo, Instrument_Sans, Space_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const archivo = Archivo({
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800", "900"],
+/* Self-hosted typefaces — no build-time or runtime network dependency. */
+const archivo = localFont({
+  src: "../fonts/archivo-latin.woff2",
+  weight: "500 900",
+  style: "normal",
   variable: "--font-archivo",
   display: "swap",
 });
 
-const instrument = Instrument_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const instrument = localFont({
+  src: "../fonts/instrument-latin.woff2",
+  weight: "400 700",
+  style: "normal",
   variable: "--font-instrument",
   display: "swap",
 });
 
-const spacemono = Space_Mono({
-  subsets: ["latin"],
-  weight: ["400", "700"],
+const spacemono = localFont({
+  src: [
+    { path: "../fonts/spacemono-400.woff2", weight: "400", style: "normal" },
+    { path: "../fonts/spacemono-700.woff2", weight: "700", style: "normal" },
+  ],
   variable: "--font-spacemono",
   display: "swap",
 });

@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { bookings, type BookingRow } from "@/db/schema";
 import { normalizeIndianMobile, quoteTrip, type CarClassId, type TripType } from "@/lib/fare";
 
-const CAR_IDS = new Set(["sedan", "suv", "innova", "traveller"]);
+const CAR_IDS = new Set(["sedan", "ertiga", "innova", "traveller", "harbaniya"]);
 const TRIP_IDS = new Set(["local", "oneway", "round"]);
 
 function toPublic(b: BookingRow) {

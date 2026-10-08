@@ -220,8 +220,8 @@ export default function BookingForm() {
     ].join("\n");
 
     return (
-      <div className="overflow-hidden rounded-2xl border border-line bg-cream shadow-[0_30px_60px_-30px_rgba(23,21,15,0.3)]">
-        <div className="checker" aria-hidden="true" />
+        <div className="overflow-hidden rounded-2xl border border-line bg-cream shadow-[0_30px_60px_-30px_rgba(23,21,15,0.3)]">
+        <div className="h-1.5 bg-sun" aria-hidden="true" />
         <div className="p-6 sm:p-8">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sun text-ink">
@@ -299,7 +299,7 @@ export default function BookingForm() {
       noValidate
       className="overflow-hidden rounded-2xl border border-line bg-cream shadow-[0_30px_60px_-30px_rgba(23,21,15,0.3)]"
     >
-      <div className="checker" aria-hidden="true" />
+      <div className="h-1.5 bg-sun" aria-hidden="true" />
       <div className="p-5 sm:p-6">
         {/* trip type */}
         <div className="grid grid-cols-3 gap-1 rounded-xl border border-line bg-paper p-1" role="tablist" aria-label="Trip type">
@@ -398,8 +398,8 @@ export default function BookingForm() {
         </p>
 
         {/* car */}
-        <div className="mt-4 grid grid-cols-4 gap-1 rounded-xl border border-line bg-paper p-1.5">
-          {CAR_CLASSES.map((c) => {
+        <div className="mt-4 grid grid-cols-3 gap-1 rounded-xl border border-line bg-paper p-1.5 sm:grid-cols-5">
+          {CAR_CLASSES.map((c, i) => {
             const fits = c.seats >= passengers;
             return (
               <button
@@ -412,11 +412,11 @@ export default function BookingForm() {
                 }}
                 aria-pressed={carId === c.id}
                 className={`rounded-lg px-1 py-2 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${
-                  carId === c.id ? "bg-ink text-sun" : "text-ink-soft hover:bg-sun-soft hover:text-ink"
-                }`}
+                  i === CAR_CLASSES.length - 1 ? "col-span-2 sm:col-span-1" : ""
+                } ${carId === c.id ? "bg-ink text-sun" : "text-ink-soft hover:bg-sun-soft hover:text-ink"}`}
               >
-                <span className="block font-display text-[12.5px] font-bold">{c.short}</span>
-                <span className="block font-mono text-[9px] opacity-70">{c.seats} seats</span>
+                <span className="block truncate font-display text-[12px] font-bold">{c.short}</span>
+                <span className="block truncate font-mono text-[9px] opacity-70">{c.seatsLabel ?? `${c.seats} seats`}</span>
               </button>
             );
           })}

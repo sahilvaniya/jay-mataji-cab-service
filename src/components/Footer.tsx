@@ -35,7 +35,7 @@ const COLS: { head: string; links: { label: string; href: string; external?: boo
 export default function Footer() {
   return (
     <footer className="bg-ink text-cream">
-      <div className="checker" aria-hidden="true" />
+      <div className="h-2 bg-sun" aria-hidden="true" />
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
         <div className="grid gap-12 lg:grid-cols-12">
           <div className="lg:col-span-5">

@@ -2,7 +2,7 @@ import { CAR_CLASSES } from "@/lib/fare";
 import { Reveal, SectionHead } from "./Reveal";
 import { CabSide, UsersIcon } from "./Icons";
 
-const ART: (0 | 1 | 2 | 3 | 4)[] = [0, 1, 2, 4];
+const ART: (0 | 1 | 2 | 3 | 4)[] = [0, 1, 2, 4, 4];
 
 export default function Fleet() {
   return (
@@ -17,14 +17,14 @@ export default function Fleet() {
               <span className="text-sun-deep"> Bigger cars when the group is bigger.</span>
             </>
           }
-          copy="Most trips go in my own Swift Dzire. For families and groups, I arrange an Ertiga, Innova Crysta, or Tempo Traveller with drivers I've known and worked with for years — same fare rules, same phone number, one bill."
+          copy="Most trips go in my own Swift Dzire. For families and groups, I arrange an Ertiga, Innova Crysta, Tempo Traveller or Harbaniya with drivers I've known and worked with for years — same fare rules, same phone number, one bill."
         />
 
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {CAR_CLASSES.map((c, i) => (
             <Reveal key={c.id} delay={i * 100}>
               <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-paper transition-all duration-300 hover:-translate-y-1.5 hover:border-ink hover:shadow-[0_28px_50px_-26px_rgba(23,21,15,0.35)]">
-                <div className="checker-yellow opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden="true" />
+                <div className="h-1.5 bg-sun opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden="true" />
                 <div className="relative flex flex-1 flex-col p-6">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -50,13 +50,13 @@ export default function Fleet() {
 
                   <div className="mt-5 flex items-center gap-3 border-t border-dashed border-line pt-4">
                     <span className="flex items-center gap-1.5 font-mono text-[11px] text-ink-soft">
-                      <UsersIcon className="h-4 w-4" /> {c.seats} seats
+                      <UsersIcon className="h-4 w-4" /> {c.seatsLabel ?? `${c.seats} seats`}
                     </span>
                     <span className="font-mono text-[11px] text-ink-soft">· {c.bags} bags · AC</span>
                   </div>
 
                   <p className="mt-auto pt-4 font-mono text-[12px] font-bold tracking-wide text-ink">
-                    ₹{c.oneWayPerKm}/km <span className="font-normal text-ink-soft">outstation · ₹{c.localPerKm}/km local</span>
+                    ₹{c.perKm}/km <span className="font-normal text-ink-soft">all trips</span>
                   </p>
                 </div>
               </article>

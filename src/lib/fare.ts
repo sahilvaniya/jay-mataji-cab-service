@@ -2,9 +2,12 @@
  * Fare engine for Mahesh Chavda Taxi Service (Ahmedabad, all-India).
  * Pure TypeScript — shared by the booking form (live quote) and the
  * API (server recomputes, never trusts the client's number).
+ *
+ * Rate card: one price per kilometre, per vehicle. Same rate for
+ * local, one-way and round trips.
  * ------------------------------------------------------------------ */
 
-export type CarClassId = "sedan" | "suv" | "innova" | "traveller";
+export type CarClassId = "sedan" | "ertiga" | "innova" | "traveller" | "harbaniya";
 export type TripType = "local" | "oneway" | "round";
 
 export interface CarClass {
@@ -12,15 +15,12 @@ export interface CarClass {
   name: string;
   short: string;
   tagline: string;
+  bestFor: string;
   vehicles: string;
   seats: number;
+  seatsLabel?: string;
   bags: number;
-  localBase: number;
-  localPerKm: number;
-  localMin: number;
-  oneWayPerKm: number;
-  roundPerKm: number;
-  allowance: number; // driver allowance per day, outstation
+  perKm: number;
   owner: "mahesh" | "partner";
 }
 
@@ -29,32 +29,25 @@ export const CAR_CLASSES: CarClass[] = [
     id: "sedan",
     name: "Sedan",
     short: "Sedan",
-    tagline: "Mahesh's own car. AC, spotless, the right size for 1–4 people and a week of luggage.",
+    tagline:
+      "Mahesh's own car. AC, spotless, and the right size for 1–4 people with a week of luggage.",
+    bestFor: "City runs & airport",
     vehicles: "Maruti Swift Dzire",
     seats: 4,
     bags: 3,
-    localBase: 100,
-    localPerKm: 15,
-    localMin: 250,
-    oneWayPerKm: 12,
-    roundPerKm: 11,
-    allowance: 300,
+    perKm: 11,
     owner: "mahesh",
   },
   {
-    id: "suv",
-    name: "SUV · Ertiga",
-    short: "SUV",
+    id: "ertiga",
+    name: "Ertiga",
+    short: "Ertiga",
     tagline: "Six seats with the boot still usable. The family-trip default.",
+    bestFor: "Families with luggage",
     vehicles: "Maruti Ertiga",
     seats: 6,
     bags: 4,
-    localBase: 150,
-    localPerKm: 18,
-    localMin: 350,
-    oneWayPerKm: 15,
-    roundPerKm: 14,
-    allowance: 300,
+    perKm: 13,
     owner: "partner",
   },
   {
@@ -62,15 +55,11 @@ export const CAR_CLASSES: CarClass[] = [
     name: "Innova Crysta",
     short: "Innova",
     tagline: "Captain seats and a suspension that forgives NH-48. Built for 600 km days.",
+    bestFor: "Long outstation drives",
     vehicles: "Toyota Innova Crysta",
     seats: 7,
     bags: 5,
-    localBase: 200,
-    localPerKm: 22,
-    localMin: 500,
-    oneWayPerKm: 19,
-    roundPerKm: 18,
-    allowance: 400,
+    perKm: 18,
     owner: "partner",
   },
   {
@@ -78,15 +67,24 @@ export const CAR_CLASSES: CarClass[] = [
     name: "Tempo Traveller",
     short: "Traveller",
     tagline: "Weddings, yatra groups, office outings — everybody in one vehicle.",
-    vehicles: "Force Tempo Traveller · 12 seats",
+    bestFor: "Groups, weddings, yatra",
+    vehicles: "Force Tempo Traveller",
     seats: 12,
     bags: 10,
-    localBase: 500,
-    localPerKm: 30,
-    localMin: 1500,
-    oneWayPerKm: 26,
-    roundPerKm: 24,
-    allowance: 500,
+    perKm: 30,
+    owner: "partner",
+  },
+  {
+    id: "harbaniya",
+    name: "Harbaniya",
+    short: "Harbaniya",
+    tagline: "The big one — for the largest groups and full-family functions. Seating plan confirmed on the call.",
+    bestFor: "Big functions & full families",
+    vehicles: "Harbaniya",
+    seats: 12,
+    seatsLabel: "Large group",
+    bags: 10,
+    perKm: 30,
     owner: "partner",
   },
 ];
@@ -262,6 +260,13 @@ export interface QuoteInput {
   tripType: TripType;
 }
 
+/**
+ * Fare = per-kilometre rate × kilometres billed.
+ * Local and one-way trips are billed for the distance travelled; a round
+ * trip is billed for the total distance driven (there and back).
+ * Tolls, parking, state tax and the driver's daily allowance are extra,
+ * at actuals — they are never folded into this figure.
+ */
 export function quoteTrip({ pickup, dropoff, passengers, carId, tripType }: QuoteInput): Quote {
   const p = pickup.trim();
   const d = dropoff.trim();
@@ -292,7 +297,6 @@ export function quoteTrip({ pickup, dropoff, passengers, carId, tripType }: Quot
     distanceKm = 4 + (fnv(p.toLowerCase() + "|" + d.toLowerCase()) % 22);
     approx = true;
   } else if (P || D) {
-    // Outstation with one unrecognised end — assume it's in Ahmedabad (home base)
     const known = (P ?? D) as Place;
     if (known.area || known === AHMEDABAD) {
       return { ok: false, reason: "unknown", message: "Pick the destination city from the list for an instant quote." };
@@ -307,48 +311,25 @@ export function quoteTrip({ pickup, dropoff, passengers, carId, tripType }: Quot
     };
   }
 
-  const lines: QuoteLine[] = [];
-  let total = 0;
-  let billedKm = distanceKm;
-  let days = 1;
-  let hours: number;
-  let note: string | undefined;
-  let rateLabel: string;
+  const rate = cls.perKm;
+  const billedKm = tripType === "round" ? distanceKm * 2 : distanceKm;
+  const hours = tripType === "round" ? (distanceKm * 2) / 55 : distanceKm / 55;
+  const days = Math.max(1, Math.ceil(hours / 8));
+  const total = billedKm * rate;
 
-  if (tripType === "local") {
-    const metered = cls.localBase + distanceKm * cls.localPerKm;
-    lines.push({ label: "Base fare", amount: cls.localBase });
-    lines.push({ label: `${distanceKm} km × ₹${cls.localPerKm}`, amount: distanceKm * cls.localPerKm });
-    if (metered < cls.localMin) {
-      lines.push({ label: "Minimum fare top-up", amount: cls.localMin - metered });
-    }
-    total = Math.max(cls.localMin, metered);
-    hours = Math.max(0.3, (distanceKm * 3) / 60);
-    rateLabel = `₹${cls.localBase} + ₹${cls.localPerKm}/km`;
-    if (distanceKm > 60) note = "That's a long local ride — One-way is usually cheaper.";
-  } else if (tripType === "oneway") {
-    billedKm = Math.max(distanceKm, 130);
-    lines.push({
-      label: `${billedKm} km × ₹${cls.oneWayPerKm}${billedKm > distanceKm ? " (min 130 km)" : ""}`,
-      amount: billedKm * cls.oneWayPerKm,
-    });
-    if (distanceKm >= 200) lines.push({ label: "Driver allowance", amount: cls.allowance });
-    total = lines.reduce((s, l) => s + l.amount, 0);
-    hours = distanceKm / 55;
-    rateLabel = `₹${cls.oneWayPerKm}/km one-way`;
-    if (distanceKm < 30) note = "Short hop — Local pricing will be cheaper.";
-  } else {
-    days = Math.max(1, Math.ceil((distanceKm * 2) / 450));
-    billedKm = Math.max(distanceKm * 2, 250 * days);
-    lines.push({
-      label: `${billedKm} km × ₹${cls.roundPerKm}${billedKm > distanceKm * 2 ? ` (min 250 km/day)` : ""}`,
-      amount: billedKm * cls.roundPerKm,
-    });
-    lines.push({ label: `Driver allowance × ${days} day${days > 1 ? "s" : ""}`, amount: cls.allowance * days });
-    total = lines.reduce((s, l) => s + l.amount, 0);
-    hours = (distanceKm * 2) / 55;
-    rateLabel = `₹${cls.roundPerKm}/km round trip`;
-    if (distanceKm < 30) note = "Short distance — Local pricing will be cheaper.";
+  const label =
+    tripType === "round"
+      ? `${billedKm} km round trip × ₹${rate}`
+      : `${billedKm} km × ₹${rate}`;
+
+  const lines: QuoteLine[] = [{ label, amount: total }];
+  let note: string | undefined;
+
+  if (tripType === "local" && distanceKm > 60) {
+    note = "That's a long local ride — a one-way booking is usually better value.";
+  }
+  if (tripType !== "local" && distanceKm < 30) {
+    note = "Short hop — local pricing is usually better value.";
   }
 
   return {
@@ -361,7 +342,7 @@ export function quoteTrip({ pickup, dropoff, passengers, carId, tripType }: Quot
     approx,
     lines,
     note,
-    rateLabel,
+    rateLabel: `₹${rate}/km`,
   };
 }
 
